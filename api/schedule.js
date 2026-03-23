@@ -6,7 +6,8 @@ module.exports = async (req, res) => {
   const { subscription, delaySeconds } = req.body;
   if (!subscription || !delaySeconds) return res.status(400).json({ error: 'Missing fields' });
 
-  const callbackUrl = `${process.env.APP_URL}/api/notify?secret=${process.env.NOTIFY_SECRET}`;
+  const appUrl = (process.env.APP_URL || `https://${process.env.VERCEL_URL}`).replace(/\/$/, '');
+  const callbackUrl = `${appUrl}/api/notify?secret=${process.env.NOTIFY_SECRET}`;
 
   try {
     const qstashUrl = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '');
