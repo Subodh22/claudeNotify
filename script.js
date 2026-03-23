@@ -340,28 +340,71 @@ if (isIos && !isInStandaloneMode) {
 
 updateNotifUI();
 
-// Sync with server — server is the source of truth
+// ── Server status bar ──────────────────────────────────────────────────────
+
+const serverStatusEl  = document.getElementById('server-status');
+const serverLabelEl   = document.getElementById('server-status-label');
+const stopServerBtn   = document.getElementById('stop-server-btn');
+
+function showServerStatus(label) {
+  serverLabelEl.textContent = label;
+  serverStatusEl.style.display = 'flex';
+}
+
+function hideServerStatus() {
+  serverStatusEl.style.display = 'none';
+}
+
+stopServerBtn.addEventListener('click', async () => {
+  stopServerBtn.textContent = 'Stopping…';
+  stopServerBtn.disabled = true;
+  try {
+    await fetch('/api/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    hideServerStatus();
+    stopTimer();
+  } catch (e) {
+    stopServerBtn.textContent = 'Stop';
+    stopServerBtn.disabled = false;
+  }
+});
+
+// ── Init ── sync with server — server is the source of truth ───────────────
+
 async function syncFromServer() {
   try {
     const res  = await fetch('/api/status');
     const data = await res.json();
 
-    if (data.active && data.firesAt) {
-      const serverTarget = new Date(data.firesAt).getTime();
-      if (serverTarget > Date.now()) {
-        // Server has a running timer — use it
-        targetTime    = serverTarget;
-        totalDuration = data.delaySeconds * 1000;
-        localStorage.setItem(KEY_TARGET,   String(targetTime));
-        localStorage.setItem(KEY_DURATION, String(totalDuration));
-        setRunning();
-        tick();
-        interval = setInterval(tick, 1000);
-        return;
+    if (data.active) {
+      if (data.firesAt) {
+        const serverTarget = new Date(data.firesAt).getTime();
+        const remaining    = serverTarget - Date.now();
+
+        if (remaining > 0) {
+          // Drive the local countdown from server's firesAt
+          targetTime    = serverTarget;
+          totalDuration = data.delaySeconds * 1000;
+          localStorage.setItem(KEY_TARGET,   String(targetTime));
+          localStorage.setItem(KEY_DURATION, String(totalDuration));
+
+          const resetAt = new Date(serverTarget).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          showServerStatus(`Auto-repeating every ${Math.round(data.delaySeconds / 3600)}h — next reset at ${resetAt}`);
+
+          setRunning();
+          tick();
+          interval = setInterval(tick, 1000);
+          return;
+        }
       }
+
+      // Active but no firesAt (old row) — still show the stop button
+      showServerStatus('Server timer is active');
+      setIdle();
+      return;
     }
 
-    // No server timer — fall back to localStorage
+    hideServerStatus();
+    // No server timer — use localStorage
     if (targetTime > Date.now()) {
       setRunning();
       tick();
