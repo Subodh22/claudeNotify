@@ -268,7 +268,7 @@ async function startTimer(durationMs) {
       if (data.messageId) {
         messageId = data.messageId;
         localStorage.setItem(KEY_MSG_ID, messageId);
-        console.log('Push scheduled ✓ messageId:', messageId);
+        showJobCard(Math.ceil(durationMs / 1000), targetTime);
       } else {
         showError('Push scheduling failed: ' + (data.error || JSON.stringify(data)));
       }
@@ -311,7 +311,7 @@ function stopTimer() {
 // ── Button Handlers ────────────────────────────────────────────────────────
 
 els.startBtn.addEventListener('click', () => startTimer(5 * 3600 * 1000));
-els.stopBtn.addEventListener('click', stopTimer);
+els.stopBtn.addEventListener('click', () => { hideJobCard(); stopTimer(); });
 
 els.customBtn.addEventListener('click', () => { els.modal.style.display = 'flex'; });
 els.modalCancel.addEventListener('click', () => { els.modal.style.display = 'none'; });
@@ -340,95 +340,99 @@ if (isIos && !isInStandaloneMode) {
 
 updateNotifUI();
 
-// ── Server status bar ──────────────────────────────────────────────────────
+// ── Job card ───────────────────────────────────────────────────────────────
 
-const serverStatusEl  = document.getElementById('server-status');
-const serverLabelEl   = document.getElementById('server-status-label');
-const stopServerBtn   = document.getElementById('stop-server-btn');
+const jobCard     = document.getElementById('job-card');
+const jobInterval = document.getElementById('job-interval');
+const jobNext     = document.getElementById('job-next');
+const jobTime     = document.getElementById('job-time');
+const jobStopBtn  = document.getElementById('job-stop-btn');
 
-function showServerStatus(label, showStop = true) {
-  serverLabelEl.textContent    = label;
-  stopServerBtn.style.display  = showStop ? '' : 'none';
-  serverStatusEl.style.display = 'flex';
+let jobTickInterval = null;
+
+function showJobCard(delaySeconds, firesAt) {
+  const hrs = delaySeconds >= 3600
+    ? `${Math.round(delaySeconds / 3600)}h`
+    : `${Math.round(delaySeconds / 60)}m`;
+
+  jobInterval.textContent = `Every ${hrs}`;
+  jobTime.textContent = new Date(firesAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  function updateNext() {
+    const remaining = firesAt - Date.now();
+    if (remaining <= 0) { jobNext.textContent = 'Any moment…'; return; }
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    jobNext.textContent = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+
+  updateNext();
+  if (jobTickInterval) clearInterval(jobTickInterval);
+  jobTickInterval = setInterval(updateNext, 1000);
+
+  jobStopBtn.textContent = 'Stop Timer';
+  jobStopBtn.disabled    = false;
+  jobCard.style.display  = 'flex';
 }
 
-function hideServerStatus() {
-  serverStatusEl.style.display = 'none';
+function hideJobCard() {
+  jobCard.style.display = 'none';
+  if (jobTickInterval) { clearInterval(jobTickInterval); jobTickInterval = null; }
 }
 
-stopServerBtn.addEventListener('click', async () => {
-  stopServerBtn.textContent = 'Stopping…';
-  stopServerBtn.disabled = true;
+jobStopBtn.addEventListener('click', async () => {
+  jobStopBtn.textContent = 'Stopping…';
+  jobStopBtn.disabled    = true;
   try {
     await fetch('/api/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    hideServerStatus();
+    hideJobCard();
     stopTimer();
   } catch (e) {
-    stopServerBtn.textContent = 'Stop';
-    stopServerBtn.disabled = false;
+    jobStopBtn.textContent = 'Stop Timer';
+    jobStopBtn.disabled    = false;
+    showError('Failed to stop: ' + e.message);
   }
 });
 
 // ── Init ── sync with server — server is the source of truth ───────────────
 
 async function syncFromServer() {
-  showServerStatus('Checking server…', false);
-
   try {
     const res  = await fetch('/api/status');
-
-    if (!res.ok) {
-      showServerStatus(`Server error ${res.status} — Stop to be safe`, true);
-      setIdle();
-      return;
-    }
-
+    if (!res.ok) { setIdle(); return; }
     const data = await res.json();
-    console.log('Server status:', data);
+
+    if (data.active && data.firesAt) {
+      const serverTarget = new Date(data.firesAt).getTime();
+      if (serverTarget > Date.now()) {
+        targetTime    = serverTarget;
+        totalDuration = (data.delaySeconds || 18000) * 1000;
+        localStorage.setItem(KEY_TARGET,   String(targetTime));
+        localStorage.setItem(KEY_DURATION, String(totalDuration));
+        showJobCard(data.delaySeconds, serverTarget);
+        setRunning();
+        tick();
+        interval = setInterval(tick, 1000);
+        return;
+      }
+    }
 
     if (data.active) {
-      if (data.firesAt) {
-        const serverTarget = new Date(data.firesAt).getTime();
-        const remaining    = serverTarget - Date.now();
-
-        if (remaining > 0) {
-          targetTime    = serverTarget;
-          totalDuration = (data.delaySeconds || 18000) * 1000;
-          localStorage.setItem(KEY_TARGET,   String(targetTime));
-          localStorage.setItem(KEY_DURATION, String(totalDuration));
-
-          const hrs     = Math.round((data.delaySeconds || 18000) / 3600);
-          const resetAt = new Date(serverTarget).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          showServerStatus(`Auto-repeating every ${hrs}h — next at ${resetAt}`, true);
-
-          setRunning();
-          tick();
-          interval = setInterval(tick, 1000);
-          return;
-        }
-      }
-      // Active but firesAt missing or past
-      showServerStatus('Server timer active (next cycle pending)', true);
-      setIdle();
-      return;
+      // Active but no firesAt yet — show card without countdown
+      showJobCard(data.delaySeconds || 18000, Date.now() + (data.delaySeconds || 18000) * 1000);
+    } else {
+      hideJobCard();
     }
 
-    // No active server timer
-    hideServerStatus();
     if (targetTime > Date.now()) {
-      setRunning();
-      tick();
-      interval = setInterval(tick, 1000);
+      setRunning(); tick(); interval = setInterval(tick, 1000);
     } else {
       setIdle();
     }
   } catch (e) {
-    console.error('Status fetch failed:', e);
-    showServerStatus('Could not reach server — Stop to cancel any running job', true);
     if (targetTime > Date.now()) {
-      setRunning();
-      tick();
-      interval = setInterval(tick, 1000);
+      setRunning(); tick(); interval = setInterval(tick, 1000);
     } else {
       setIdle();
     }

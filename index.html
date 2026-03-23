@@ -38,12 +38,6 @@
     </header>
 
     <main>
-      <div class="server-status" id="server-status" style="display:none">
-        <div class="server-status-dot"></div>
-        <span id="server-status-label">Checking…</span>
-        <button class="btn-stop-server" id="stop-server-btn">Stop</button>
-      </div>
-
       <div class="status-text" id="status-text">Hit the limit? Start the timer.</div>
 
       <div class="clock" id="clock">
@@ -67,6 +61,30 @@
       </div>
 
       <p class="hint" id="reset-hint" style="display:none"></p>
+
+      <!-- Active job card -->
+      <div class="job-card" id="job-card" style="display:none">
+        <div class="job-header">
+          <div class="job-dot"></div>
+          <span class="job-title">Auto-repeating timer</span>
+        </div>
+        <div class="job-row">
+          <span class="job-label">Interval</span>
+          <span class="job-value" id="job-interval">—</span>
+        </div>
+        <div class="job-row">
+          <span class="job-label">Next reset</span>
+          <span class="job-value" id="job-next">—</span>
+        </div>
+        <div class="job-row">
+          <span class="job-label">Resets at</span>
+          <span class="job-value" id="job-time">—</span>
+        </div>
+        <button class="job-stop-btn" id="job-stop-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Stop Timer
+        </button>
+      </div>
     </main>
 
     <div class="done-overlay" id="done-overlay" style="display:none">
