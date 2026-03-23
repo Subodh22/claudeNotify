@@ -1,3 +1,5 @@
+const { kv } = require('@vercel/kv');
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -7,15 +9,10 @@ module.exports = async (req, res) => {
   let appUrl = process.env.APP_URL || process.env.VERCEL_URL || '';
   if (appUrl && !appUrl.startsWith('http')) appUrl = 'https://' + appUrl;
   appUrl = appUrl.replace(/\/$/, '');
-
   if (!appUrl) return res.status(500).json({ error: 'APP_URL not set' });
 
-  // Destination URL passed directly (not encoded) — QStash requirement
-  // Secret passed as a forwarded header instead of query param
   const callbackUrl = `${appUrl}/api/notify`;
   const qstashUrl   = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '');
-
-  console.log('Scheduling:', callbackUrl, 'delay:', delaySeconds, 'via', qstashUrl);
 
   try {
     const response = await fetch(`${qstashUrl}/v2/publish/${callbackUrl}`, {
@@ -26,16 +23,19 @@ module.exports = async (req, res) => {
         'Upstash-Delay':                  `${Math.ceil(delaySeconds)}s`,
         'Upstash-Forward-X-Notify-Secret': process.env.NOTIFY_SECRET,
       },
-      body: JSON.stringify({ subscription }),
+      // Include delaySeconds so /api/notify can re-schedule with same duration
+      body: JSON.stringify({ subscription, delaySeconds }),
     });
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('QStash error:', response.status, text);
       return res.status(502).json({ error: `QStash ${response.status}: ${text}`, callbackUrl });
     }
 
     const data = await response.json();
+    // Store active timer in KV so /api/cancel can always find the latest messageId
+    await kv.set('active-timer', { messageId: data.messageId, subscription, delaySeconds });
+
     res.json({ messageId: data.messageId });
   } catch (err) {
     console.error(err);

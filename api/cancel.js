@@ -1,18 +1,26 @@
-// Cancels a scheduled QStash message (called when user stops the timer).
+const { kv } = require('@vercel/kv');
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { messageId } = req.body;
-  if (!messageId) return res.status(400).json({ error: 'Missing messageId' });
-
   try {
-    await fetch(`https://qstash.upstash.io/v2/messages/${messageId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${process.env.QSTASH_TOKEN}` },
-    });
+    // Get the current active timer from KV (always up to date even after re-schedules)
+    const active = await kv.get('active-timer');
+
+    if (active?.messageId) {
+      const qstashUrl = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '');
+      await fetch(`${qstashUrl}/v2/messages/${active.messageId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${process.env.QSTASH_TOKEN}` },
+      });
+    }
+
+    // Clear KV — this also signals /api/notify to stop if it fires before cancel lands
+    await kv.del('active-timer');
+
     res.status(200).json({ ok: true });
   } catch (err) {
-    // If cancel fails (message already delivered), that's fine
-    res.status(200).json({ ok: true, note: 'cancel attempted' });
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 };
