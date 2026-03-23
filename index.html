@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Reset Timer</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d0d10" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="ClaudeReset" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        ClaudeReset
+      </div>
+      <button id="notif-btn" class="notif-btn" title="Enable notifications">
+        <svg id="bell-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <svg id="bell-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      </button>
+    </header>
+
+    <main>
+      <div class="status-text" id="status-text">Hit the limit? Start the timer.</div>
+
+      <div class="clock" id="clock">
+        <span id="h">00</span><span class="sep">:</span><span id="m">00</span><span class="sep">:</span><span id="s">00</span>
+      </div>
+
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="start-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start 5h Timer
+        </button>
+        <button class="btn ghost" id="stop-btn" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Stop
+        </button>
+        <button class="btn ghost" id="custom-btn">Custom</button>
+      </div>
+
+      <p class="hint" id="reset-hint" style="display:none"></p>
+    </main>
+
+    <div class="done-overlay" id="done-overlay" style="display:none">
+      <div class="done-card">
+        <div class="done-icon">✓</div>
+        <h2>Usage Reset!</h2>
+        <p>Your Claude usage has reset.<br/>Go get it.</p>
+        <button class="btn primary" id="done-close">Start New Timer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom time modal -->
+  <div class="modal-overlay" id="modal" style="display:none">
+    <div class="modal-card">
+      <h3>Custom Reset Time</h3>
+      <div class="modal-inputs">
+        <div class="input-group">
+          <label>Hours</label>
+          <input type="number" id="inp-h" min="0" max="23" value="5" />
+        </div>
+        <div class="input-group">
+          <label>Minutes</label>
+          <input type="number" id="inp-m" min="0" max="59" value="0" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="modal-cancel">Cancel</button>
+        <button class="btn primary" id="modal-confirm">Set Timer</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="chime" src="https://cdn.pixabay.com/audio/2021/08/04/audio_06d8a151b1.mp3" preload="auto"></audio>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

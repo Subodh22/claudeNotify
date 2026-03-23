@@ -1,0 +1,11 @@
+{
+  "name": "claude-reset-timer",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "web-push": "^3.6.7"
+  },
+  "scripts": {
+    "generate-keys": "node generate-keys.js"
+  }
+}
