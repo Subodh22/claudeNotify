@@ -26,8 +26,39 @@ const els = {
   doneOverlay:  $('done-overlay'),
   doneClose:    $('done-close'),
   resetHint:    $('reset-hint'),
-  chime:        $('chime'),
 };
+
+// ── Chime via Web Audio (no external CDN) ──────────────────────────────────
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659, 784].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.5);
+      osc.start(ctx.currentTime + i * 0.18);
+      osc.stop(ctx.currentTime + i * 0.18 + 0.5);
+    });
+  } catch (e) { /* audio not supported */ }
+}
+
+// ── Error banner ───────────────────────────────────────────────────────────
+function showError(msg) {
+  let banner = document.getElementById('err-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'err-banner';
+    banner.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#ef4444;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;max-width:90vw;text-align:center';
+    document.body.appendChild(banner);
+  }
+  banner.textContent = msg;
+  banner.style.display = 'block';
+  setTimeout(() => { banner.style.display = 'none'; }, 8000);
+}
 
 let targetTime    = parseInt(localStorage.getItem(KEY_TARGET))   || 0;
 let totalDuration = parseInt(localStorage.getItem(KEY_DURATION)) || 0;
@@ -147,8 +178,7 @@ function tick() {
 
     if (!hasNotified) {
       hasNotified = true;
-      // In-app sound + overlay (fires when tab is open)
-      if (els.chime) els.chime.play().catch(() => {});
+      playChime();
       els.doneOverlay.style.display = 'flex';
     }
   } else {
@@ -186,10 +216,16 @@ async function startTimer(durationMs) {
       if (data.messageId) {
         messageId = data.messageId;
         localStorage.setItem(KEY_MSG_ID, messageId);
+        console.log('Push scheduled ✓ messageId:', messageId);
+      } else {
+        showError('Push scheduling failed: ' + (data.error || JSON.stringify(data)));
       }
     } catch (e) {
-      console.warn('Could not schedule server push:', e);
+      showError('Push error: ' + e.message);
+      console.error('Could not schedule server push:', e);
     }
+  } else if (!notifEnabled) {
+    showError('Enable notifications (bell icon) to get background alerts.');
   }
 }
 
