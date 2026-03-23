@@ -4,8 +4,8 @@ const webpush = require('web-push');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Verify secret so only QStash (who knows the URL) can call this
-  if (req.query.secret !== process.env.NOTIFY_SECRET) {
+  // Verify secret forwarded by QStash as a header
+  if (req.headers['x-notify-secret'] !== process.env.NOTIFY_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
