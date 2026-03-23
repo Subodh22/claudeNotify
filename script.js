@@ -67,6 +67,38 @@ let messageId     = localStorage.getItem(KEY_MSG_ID) || null;
 let interval      = null;
 let hasNotified   = false;
 
+// ── iOS detection ──────────────────────────────────────────────────────────
+
+const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isInStandaloneMode = ('standalone' in navigator) && navigator.standalone;
+
+function showIosInstallPrompt() {
+  let el = document.getElementById('ios-prompt');
+  if (el) { el.style.display = 'flex'; return; }
+  el = document.createElement('div');
+  el.id = 'ios-prompt';
+  el.style.cssText = `
+    position:fixed;inset:0;background:rgba(13,13,16,0.92);backdrop-filter:blur(8px);
+    display:flex;align-items:flex-end;justify-content:center;z-index:200;padding:20px;
+  `;
+  el.innerHTML = `
+    <div style="background:#16161a;border:1px solid #222228;border-radius:20px;padding:28px;width:100%;max-width:380px;text-align:center;margin-bottom:12px">
+      <div style="font-size:32px;margin-bottom:12px">📲</div>
+      <h2 style="font-size:18px;font-weight:600;margin-bottom:10px">Add to Home Screen</h2>
+      <p style="color:#5a5a6e;font-size:14px;line-height:1.6;margin-bottom:20px">
+        iOS only supports notifications from installed apps.<br><br>
+        Tap <strong style="color:#e8e8f0">Share</strong> <span style="font-size:16px">⬆️</span> then
+        <strong style="color:#e8e8f0">Add to Home Screen</strong>, then open the app from there.
+      </p>
+      <button onclick="document.getElementById('ios-prompt').style.display='none'"
+        style="background:#7c6af5;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:15px;font-weight:500;cursor:pointer;width:100%">
+        Got it
+      </button>
+    </div>
+  `;
+  document.body.appendChild(el);
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function pad(n) { return String(Math.max(0, n)).padStart(2, '0'); }
@@ -103,7 +135,10 @@ function updateNotifUI() {
 }
 
 els.notifBtn.addEventListener('click', async () => {
-  if (!('Notification' in window)) return alert('Notifications not supported in this browser.');
+  if (!('Notification' in window)) {
+    if (isIos && !isInStandaloneMode) return showIosInstallPrompt();
+    return alert('Notifications not supported in this browser.');
+  }
 
   if (Notification.permission === 'default') {
     const perm = await Notification.requestPermission();
@@ -278,6 +313,11 @@ els.doneClose.addEventListener('click', () => {
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────
+
+// On iOS, nudge user to install as PWA if not already
+if (isIos && !isInStandaloneMode) {
+  setTimeout(showIosInstallPrompt, 1200);
+}
 
 updateNotifUI();
 
