@@ -346,8 +346,9 @@ const serverStatusEl  = document.getElementById('server-status');
 const serverLabelEl   = document.getElementById('server-status-label');
 const stopServerBtn   = document.getElementById('stop-server-btn');
 
-function showServerStatus(label) {
-  serverLabelEl.textContent = label;
+function showServerStatus(label, showStop = true) {
+  serverLabelEl.textContent    = label;
+  stopServerBtn.style.display  = showStop ? '' : 'none';
   serverStatusEl.style.display = 'flex';
 }
 
@@ -371,9 +372,19 @@ stopServerBtn.addEventListener('click', async () => {
 // ── Init ── sync with server — server is the source of truth ───────────────
 
 async function syncFromServer() {
+  showServerStatus('Checking server…', false);
+
   try {
     const res  = await fetch('/api/status');
+
+    if (!res.ok) {
+      showServerStatus(`Server error ${res.status} — Stop to be safe`, true);
+      setIdle();
+      return;
+    }
+
     const data = await res.json();
+    console.log('Server status:', data);
 
     if (data.active) {
       if (data.firesAt) {
@@ -381,14 +392,14 @@ async function syncFromServer() {
         const remaining    = serverTarget - Date.now();
 
         if (remaining > 0) {
-          // Drive the local countdown from server's firesAt
           targetTime    = serverTarget;
-          totalDuration = data.delaySeconds * 1000;
+          totalDuration = (data.delaySeconds || 18000) * 1000;
           localStorage.setItem(KEY_TARGET,   String(targetTime));
           localStorage.setItem(KEY_DURATION, String(totalDuration));
 
+          const hrs     = Math.round((data.delaySeconds || 18000) / 3600);
           const resetAt = new Date(serverTarget).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          showServerStatus(`Auto-repeating every ${Math.round(data.delaySeconds / 3600)}h — next reset at ${resetAt}`);
+          showServerStatus(`Auto-repeating every ${hrs}h — next at ${resetAt}`, true);
 
           setRunning();
           tick();
@@ -396,15 +407,14 @@ async function syncFromServer() {
           return;
         }
       }
-
-      // Active but no firesAt (old row) — still show the stop button
-      showServerStatus('Server timer is active');
+      // Active but firesAt missing or past
+      showServerStatus('Server timer active (next cycle pending)', true);
       setIdle();
       return;
     }
 
+    // No active server timer
     hideServerStatus();
-    // No server timer — use localStorage
     if (targetTime > Date.now()) {
       setRunning();
       tick();
@@ -413,7 +423,8 @@ async function syncFromServer() {
       setIdle();
     }
   } catch (e) {
-    // Server unreachable — use localStorage
+    console.error('Status fetch failed:', e);
+    showServerStatus('Could not reach server — Stop to cancel any running job', true);
     if (targetTime > Date.now()) {
       setRunning();
       tick();
