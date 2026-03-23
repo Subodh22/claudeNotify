@@ -9,8 +9,9 @@ module.exports = async (req, res) => {
   const callbackUrl = `${process.env.APP_URL}/api/notify?secret=${process.env.NOTIFY_SECRET}`;
 
   try {
+    const qstashUrl = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '');
     const response = await fetch(
-      `https://qstash.upstash.io/v2/publish/${encodeURIComponent(callbackUrl)}`,
+      `${qstashUrl}/v2/publish/${encodeURIComponent(callbackUrl)}`,
       {
         method: 'POST',
         headers: {
