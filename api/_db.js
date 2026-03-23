@@ -13,9 +13,11 @@ async function ensureTable() {
       id            INTEGER PRIMARY KEY DEFAULT 1,
       message_id    TEXT,
       subscription  JSONB,
-      delay_seconds INTEGER
+      delay_seconds INTEGER,
+      fires_at      TIMESTAMPTZ
     )
   `;
+  await db`ALTER TABLE active_timer ADD COLUMN IF NOT EXISTS fires_at TIMESTAMPTZ`;
 }
 
 async function getTimer() {
@@ -28,13 +30,15 @@ async function getTimer() {
 async function setTimer(messageId, subscription, delaySeconds) {
   const db = sql();
   await ensureTable();
+  const firesAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
   await db`
-    INSERT INTO active_timer (id, message_id, subscription, delay_seconds)
-    VALUES (1, ${messageId}, ${JSON.stringify(subscription)}, ${delaySeconds})
+    INSERT INTO active_timer (id, message_id, subscription, delay_seconds, fires_at)
+    VALUES (1, ${messageId}, ${JSON.stringify(subscription)}, ${delaySeconds}, ${firesAt})
     ON CONFLICT (id) DO UPDATE SET
       message_id    = ${messageId},
       subscription  = ${JSON.stringify(subscription)},
-      delay_seconds = ${delaySeconds}
+      delay_seconds = ${delaySeconds},
+      fires_at      = ${firesAt}
   `;
 }
 

@@ -334,17 +334,51 @@ els.doneClose.addEventListener('click', () => {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 
-// On iOS, nudge user to install as PWA if not already
 if (isIos && !isInStandaloneMode) {
   setTimeout(showIosInstallPrompt, 1200);
 }
 
 updateNotifUI();
 
-if (targetTime > Date.now()) {
-  setRunning();
-  tick();
-  interval = setInterval(tick, 1000);
-} else {
-  setIdle();
+// Sync with server — server is the source of truth
+async function syncFromServer() {
+  try {
+    const res  = await fetch('/api/status');
+    const data = await res.json();
+
+    if (data.active && data.firesAt) {
+      const serverTarget = new Date(data.firesAt).getTime();
+      if (serverTarget > Date.now()) {
+        // Server has a running timer — use it
+        targetTime    = serverTarget;
+        totalDuration = data.delaySeconds * 1000;
+        localStorage.setItem(KEY_TARGET,   String(targetTime));
+        localStorage.setItem(KEY_DURATION, String(totalDuration));
+        setRunning();
+        tick();
+        interval = setInterval(tick, 1000);
+        return;
+      }
+    }
+
+    // No server timer — fall back to localStorage
+    if (targetTime > Date.now()) {
+      setRunning();
+      tick();
+      interval = setInterval(tick, 1000);
+    } else {
+      setIdle();
+    }
+  } catch (e) {
+    // Server unreachable — use localStorage
+    if (targetTime > Date.now()) {
+      setRunning();
+      tick();
+      interval = setInterval(tick, 1000);
+    } else {
+      setIdle();
+    }
+  }
 }
+
+syncFromServer();
