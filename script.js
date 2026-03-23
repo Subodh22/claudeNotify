@@ -66,6 +66,7 @@ let notifEnabled  = localStorage.getItem(KEY_NOTIF) === 'true';
 let messageId     = localStorage.getItem(KEY_MSG_ID) || null;
 let interval      = null;
 let hasNotified   = false;
+let restartTimeout = null;
 
 // ── iOS detection ──────────────────────────────────────────────────────────
 
@@ -214,7 +215,23 @@ function tick() {
     if (!hasNotified) {
       hasNotified = true;
       playChime();
+      // Show overlay then auto-restart with same duration
       els.doneOverlay.style.display = 'flex';
+      let secs = 10;
+      els.doneClose.textContent = `Stop (restarting in ${secs}s)`;
+      restartTimeout = setInterval(() => {
+        secs--;
+        els.doneClose.textContent = secs > 0
+          ? `Stop (restarting in ${secs}s)`
+          : 'Restarting…';
+        if (secs <= 0) {
+          clearInterval(restartTimeout);
+          restartTimeout = null;
+          els.doneOverlay.style.display = 'none';
+          els.doneClose.textContent = 'Stop';
+          startTimer(totalDuration);
+        }
+      }, 1000);
     }
   } else {
     updateDisplay(remaining);
@@ -268,6 +285,9 @@ async function startTimer(durationMs) {
 
 function stopTimer() {
   clearInterval(interval);
+  if (restartTimeout) { clearInterval(restartTimeout); restartTimeout = null; }
+  els.doneOverlay.style.display = 'none';
+  els.doneClose.textContent = 'Stop';
   interval      = null;
   targetTime    = 0;
   totalDuration = 0;
