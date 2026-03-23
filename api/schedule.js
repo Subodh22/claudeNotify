@@ -24,8 +24,8 @@ module.exports = async (req, res) => {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('QStash error:', text);
-      return res.status(502).json({ error: 'Failed to schedule' });
+      console.error('QStash error:', response.status, text);
+      return res.status(502).json({ error: `QStash ${response.status}: ${text}` });
     }
 
     const data = await response.json();
