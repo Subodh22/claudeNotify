@@ -1,23 +1,20 @@
-const { kv } = require('@vercel/kv');
+const { getTimer, clearTimer } = require('./_db');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-    // Get the current active timer from KV (always up to date even after re-schedules)
-    const active = await kv.get('active-timer');
+    const active = await getTimer();
 
-    if (active?.messageId) {
+    if (active?.message_id) {
       const qstashUrl = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '');
-      await fetch(`${qstashUrl}/v2/messages/${active.messageId}`, {
+      await fetch(`${qstashUrl}/v2/messages/${active.message_id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${process.env.QSTASH_TOKEN}` },
       });
     }
 
-    // Clear KV — this also signals /api/notify to stop if it fires before cancel lands
-    await kv.del('active-timer');
-
+    await clearTimer();
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error(err);

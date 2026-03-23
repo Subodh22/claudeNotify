@@ -1,5 +1,5 @@
-const webpush = require('web-push');
-const { kv }  = require('@vercel/kv');
+const webpush          = require('web-push');
+const { getTimer, setTimer, clearTimer } = require('./_db');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
@@ -11,14 +11,14 @@ module.exports = async (req, res) => {
   const { subscription, delaySeconds } = req.body;
   if (!subscription) return res.status(400).json({ error: 'Missing subscription' });
 
-  // Check if the timer was stopped while we were waiting
-  const active = await kv.get('active-timer');
+  // If timer was stopped (row deleted), do nothing
+  const active = await getTimer();
   if (!active) {
-    console.log('Timer was stopped — skipping notification');
+    console.log('Timer stopped — skipping');
     return res.status(200).json({ ok: true, note: 'stopped' });
   }
 
-  // Send the push notification
+  // Send push notification
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT,
     process.env.VAPID_PUBLIC_KEY,
@@ -39,36 +39,32 @@ module.exports = async (req, res) => {
     }
   }
 
-  // Re-schedule the next cycle automatically
-  if (delaySeconds) {
-    let appUrl = process.env.APP_URL || process.env.VERCEL_URL || '';
-    if (appUrl && !appUrl.startsWith('http')) appUrl = 'https://' + appUrl;
-    appUrl = appUrl.replace(/\/$/, '');
+  // Re-schedule next cycle
+  let appUrl = process.env.APP_URL || process.env.VERCEL_URL || '';
+  if (appUrl && !appUrl.startsWith('http')) appUrl = 'https://' + appUrl;
+  appUrl = appUrl.replace(/\/$/, '');
 
-    const callbackUrl = `${appUrl}/api/notify`;
-    const qstashUrl   = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '');
+  const qstashUrl = (process.env.QSTASH_URL || 'https://qstash.upstash.io').replace(/\/$/, '');
 
-    try {
-      const response = await fetch(`${qstashUrl}/v2/publish/${callbackUrl}`, {
-        method: 'POST',
-        headers: {
-          Authorization:                    `Bearer ${process.env.QSTASH_TOKEN}`,
-          'Content-Type':                   'application/json',
-          'Upstash-Delay':                  `${Math.ceil(delaySeconds)}s`,
-          'Upstash-Forward-X-Notify-Secret': process.env.NOTIFY_SECRET,
-        },
-        body: JSON.stringify({ subscription, delaySeconds }),
-      });
+  try {
+    const response = await fetch(`${qstashUrl}/v2/publish/${appUrl}/api/notify`, {
+      method: 'POST',
+      headers: {
+        Authorization:                    `Bearer ${process.env.QSTASH_TOKEN}`,
+        'Content-Type':                   'application/json',
+        'Upstash-Delay':                  `${Math.ceil(delaySeconds)}s`,
+        'Upstash-Forward-X-Notify-Secret': process.env.NOTIFY_SECRET,
+      },
+      body: JSON.stringify({ subscription, delaySeconds }),
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Update KV with new messageId for the next cycle
-        await kv.set('active-timer', { messageId: data.messageId, subscription, delaySeconds });
-        console.log('Re-scheduled next cycle, messageId:', data.messageId);
-      }
-    } catch (err) {
-      console.error('Re-schedule failed:', err);
+    if (response.ok) {
+      const data = await response.json();
+      await setTimer(data.messageId, subscription, delaySeconds);
+      console.log('Next cycle scheduled:', data.messageId);
     }
+  } catch (err) {
+    console.error('Re-schedule failed:', err);
   }
 
   res.status(200).json({ ok: true });

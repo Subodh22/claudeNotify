@@ -1,4 +1,4 @@
-const { kv } = require('@vercel/kv');
+const { setTimer } = require('./_db');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
@@ -23,7 +23,6 @@ module.exports = async (req, res) => {
         'Upstash-Delay':                  `${Math.ceil(delaySeconds)}s`,
         'Upstash-Forward-X-Notify-Secret': process.env.NOTIFY_SECRET,
       },
-      // Include delaySeconds so /api/notify can re-schedule with same duration
       body: JSON.stringify({ subscription, delaySeconds }),
     });
 
@@ -33,8 +32,7 @@ module.exports = async (req, res) => {
     }
 
     const data = await response.json();
-    // Store active timer in KV so /api/cancel can always find the latest messageId
-    await kv.set('active-timer', { messageId: data.messageId, subscription, delaySeconds });
+    await setTimer(data.messageId, subscription, delaySeconds);
 
     res.json({ messageId: data.messageId });
   } catch (err) {
