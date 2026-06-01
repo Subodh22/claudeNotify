@@ -219,7 +219,7 @@ main {
   font-weight: 300;
   letter-spacing: -4px;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
+  color: var(--accent);
   transition: color 0.3s;
   line-height: 1;
 }
@@ -433,3 +433,71 @@ main {
 }
 
 .modal-actions .btn { flex: 1; justify-content: center; }
+
+/* Usage meter card */
+.usage-card {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.usage-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 14px;
+  color: var(--muted);
+}
+
+.usage-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.usage-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.usage-cost {
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -1px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-tokens {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.usage-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.usage-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.usage-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
