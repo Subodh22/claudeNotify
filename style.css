@@ -1,14 +1,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f0f4ff;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --border: #dde3f0;
-  --text: #1e2340;
-  --muted: #6b7a9d;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
   --accent: #4f46e5;
-  --accent-dim: rgba(79, 70, 229, 0.08);
-  --accent-glow: rgba(79, 70, 229, 0.25);
+  --accent-dim: rgba(79, 70, 229, 0.07);
+  --accent-glow: rgba(79, 70, 229, 0.20);
   --success: #059669;
 }
 
@@ -40,6 +40,7 @@ html, body {
   flex-direction: column;
   gap: 12px;
   animation: pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(79, 70, 229, 0.08);
 }
 
 .job-header {
@@ -162,7 +163,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 64px;
+  margin-bottom: 40px;
 }
 
 .logo {
@@ -444,6 +445,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06), 0 2px 10px rgba(15, 23, 42, 0.04);
 }
 
 .usage-header {
