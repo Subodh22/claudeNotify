@@ -440,3 +440,34 @@ async function syncFromServer() {
 }
 
 syncFromServer();
+
+// ── Usage meter ─────────────────────────────────────────────────────────────
+
+function fmtCost(n) {
+  return n === null || n === undefined ? '—' : '$' + Number(n).toFixed(2);
+}
+
+function fmtTokens(n) {
+  if (!n) return '';
+  const k = Math.round(n / 1000);
+  return k >= 1000 ? (k / 1000).toFixed(1) + 'M tokens' : k + 'K tokens';
+}
+
+async function fetchUsage() {
+  const card = document.getElementById('usage-card');
+  try {
+    const res = await fetch('/api/usage');
+    if (!res.ok) return;
+    const { today, week, allTime } = await res.json();
+
+    document.getElementById('usage-cost').textContent           = fmtCost(today.cost);
+    document.getElementById('usage-tokens').textContent         = fmtTokens(today.total_tokens);
+    document.getElementById('usage-sessions-today').textContent = today.sessions + (today.sessions === 1 ? ' session' : ' sessions');
+    document.getElementById('usage-week').textContent           = fmtCost(week.cost) + ' · ' + week.sessions + ' sessions';
+    document.getElementById('usage-alltime').textContent        = fmtCost(allTime.cost) + ' · ' + allTime.sessions + ' sessions';
+
+    card.style.display = 'flex';
+  } catch { /* usage unavailable — hide card */ }
+}
+
+fetchUsage();

@@ -85,6 +85,30 @@
           Stop Timer
         </button>
       </div>
+
+      <!-- Usage meter card -->
+      <div class="usage-card" id="usage-card" style="display:none">
+        <div class="usage-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <span class="usage-title">Usage Today</span>
+        </div>
+        <div class="usage-main">
+          <span class="usage-cost" id="usage-cost">—</span>
+          <span class="usage-tokens" id="usage-tokens"></span>
+        </div>
+        <div class="usage-row">
+          <span class="usage-label">Sessions today</span>
+          <span class="usage-value" id="usage-sessions-today">—</span>
+        </div>
+        <div class="usage-row">
+          <span class="usage-label">This week</span>
+          <span class="usage-value" id="usage-week">—</span>
+        </div>
+        <div class="usage-row" style="border-bottom:none">
+          <span class="usage-label">All time</span>
+          <span class="usage-value" id="usage-alltime">—</span>
+        </div>
+      </div>
     </main>
 
     <div class="done-overlay" id="done-overlay" style="display:none">
